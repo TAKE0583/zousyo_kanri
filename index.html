@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>蔵書管理システム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 50px;
+        }
+
+        .menu-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: #333;
+        }
+
+        .menu-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .menu-icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+
+        .menu-title {
+            font-size: 1.5rem;
+            font-weight: 500;
+            margin-bottom: 10px;
+            color: #667eea;
+        }
+
+        .menu-description {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .db-controls {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            margin-top: 30px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            text-align: center;
+        }
+
+        .db-controls h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+            margin: 0 10px 10px 0;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a5a);
+        }
+
+        .btn-danger:hover {
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .menu-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .menu-card {
+                padding: 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 蔵書管理システム</h1>
+            <p>あなたの本の管理をサポートします</p>
+        </div>
+
+        <div class="menu-grid">
+            <a href="register.html" class="menu-card">
+                <div class="menu-icon">📖</div>
+                <h2 class="menu-title">本を登録</h2>
+                <p class="menu-description">新しい本を登録します。<br>ISBNコードから自動で情報を取得できます。</p>
+            </a>
+
+            <a href="list.html" class="menu-card">
+                <div class="menu-icon">📚</div>
+                <h2 class="menu-title">蔵書一覧</h2>
+                <p class="menu-description">登録した本の一覧を表示します。<br>検索や並び替えができます。</p>
+            </a>
+        </div>
+
+        <div class="db-controls">
+            <h3>データベース管理</h3>
+            <button id="exportDb" class="btn">💾 データベースをエクスポート</button>
+            <button id="importDb" class="btn">📂 データベースをインポート</button>
+            <input type="file" id="importFile" accept=".db,.sqlite" style="display: none;">
+            <button id="clearDb" class="btn btn-danger">🗑️ データベースをクリア</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+    <script>
+        class DatabaseManager {
+            constructor() {
+                this.db = null;
+                this.SQL = null;
+                this.init();
+            }
+
+            async init() {
+                try {
+                    this.SQL = await window.initSqlJs({
+                        locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
+                    });
+                    this.db = new this.SQL.Database();
+                    this.setupEventListeners();
+                } catch (error) {
+                    console.error('初期化エラー:', error);
+                    alert('データベースの初期化に失敗しました。');
+                }
+            }
+
+            setupEventListeners() {
+                document.getElementById('exportDb').addEventListener('click', () => {
+                    this.exportDatabase();
+                });
+
+                document.getElementById('importDb').addEventListener('click', () => {
+                    document.getElementById('importFile').click();
+                });
+
+                document.getElementById('importFile').addEventListener('change', (e) => {
+                    if (e.target.files.length > 0) {
+                        this.importDatabase(e.target.files[0]);
+                    }
+                });
+
+                document.getElementById('clearDb').addEventListener('click', () => {
+                    this.clearDatabase();
+                });
+            }
+
+            exportDatabase() {
+                try {
+                    const data = this.db.export();
+                    const blob = new Blob([data], { type: 'application/x-sqlite3' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `books_${new Date().toISOString().slice(0,10)}.db`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    alert('データベースをエクスポートしました！');
+                } catch (error) {
+                    console.error('Export error:', error);
+                    alert('データベースのエクスポートに失敗しました。');
+                }
+            }
+
+            async importDatabase(file) {
+                try {
+                    const buffer = await file.arrayBuffer();
+                    this.db = new this.SQL.Database(new Uint8Array(buffer));
+                    alert('データベースをインポートしました！');
+                } catch (error) {
+                    console.error('Import error:', error);
+                    alert('データベースのインポートに失敗しました。');
+                }
+            }
+
+            clearDatabase() {
+                if (confirm('本当にデータベースをクリアしますか？この操作は取り消せません。')) {
+                    try {
+                        this.db.run('DROP TABLE IF EXISTS books');
+                        this.db.run(`
+                            CREATE TABLE IF NOT EXISTS books (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                isbn TEXT,
+                                title TEXT NOT NULL,
+                                author TEXT NOT NULL,
+                                publisher TEXT,
+                                genre TEXT,
+                                status TEXT DEFAULT '未読',
+                                memo TEXT,
+                                added_date TEXT DEFAULT CURRENT_TIMESTAMP
+                            )
+                        `);
+                        alert('データベースをクリアしました。');
+                    } catch (error) {
+                        console.error('Clear error:', error);
+                        alert('データベースのクリアに失敗しました。');
+                    }
+                }
+            }
+        }
+
+        // アプリケーション初期化
+        const dbManager = new DatabaseManager();
+    </script>
+</body>
+</html> 

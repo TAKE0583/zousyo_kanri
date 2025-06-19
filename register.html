@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>蔵書登録 - 蔵書管理システム</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+    <script src="https://unpkg.com/@zxing/library@latest"></script>
+    <script src="database.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .back-link {
+            display: inline-block;
+            color: white;
+            text-decoration: none;
+            margin-bottom: 20px;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .back-link:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .register-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .isbn-input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .isbn-input-group input {
+            flex: 1;
+        }
+
+        .scan-button {
+            background: linear-gradient(45deg, #4ecdc4, #45b7d1);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(78, 205, 196, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .scan-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(78, 205, 196, 0.4);
+        }
+
+        .scan-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .camera-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .camera-modal.active {
+            display: flex;
+        }
+
+        .camera-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin: 20px;
+        }
+
+        .camera-container video {
+            width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .camera-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 2px solid #4ecdc4;
+            border-radius: 10px;
+            box-sizing: border-box;
+        }
+
+        .camera-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .camera-button {
+            background: linear-gradient(45deg, #4ecdc4, #45b7d1);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(78, 205, 196, 0.3);
+        }
+
+        .camera-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(78, 205, 196, 0.4);
+        }
+
+        .camera-button.close {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a5a);
+        }
+
+        .camera-button.close:hover {
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .scan-status {
+            color: white;
+            margin-top: 10px;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.9);
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .search-result {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+            display: none;
+        }
+
+        .search-result.active {
+            display: block;
+        }
+
+        .search-result h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .search-result p {
+            margin-bottom: 8px;
+            color: #666;
+        }
+
+        .error-message {
+            color: #ff6b6b;
+            font-size: 0.9rem;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .error-message.active {
+            display: block;
+        }
+
+        .success-message {
+            color: #4ecdc4;
+            font-size: 0.9rem;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .success-message.active {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .register-section {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <div class="mb-6">
+            <a href="index.html" class="text-blue-600 hover:text-blue-800">
+                ← メインページに戻る
+            </a>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h1 class="text-2xl font-bold mb-6">蔵書登録</h1>
+
+            <form id="bookForm" class="space-y-4">
+                <div class="flex items-center space-x-2">
+                    <div class="flex-grow">
+                        <label for="isbn" class="block text-sm font-medium text-gray-700">ISBN/JANコード</label>
+                        <input type="text" id="isbn" name="isbn" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <div id="isbnError" class="hidden text-red-500 text-sm mt-1"></div>
+                    </div>
+                    <button type="button" id="scanButton" class="mt-6 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                        スキャン
+                    </button>
+                </div>
+
+                <div>
+                    <label for="title" class="block text-sm font-medium text-gray-700">タイトル</label>
+                    <input type="text" id="title" name="title" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <div id="titleError" class="hidden text-red-500 text-sm mt-1"></div>
+                </div>
+
+                <div>
+                    <label for="author" class="block text-sm font-medium text-gray-700">著者</label>
+                    <input type="text" id="author" name="author" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <div id="authorError" class="hidden text-red-500 text-sm mt-1"></div>
+                </div>
+
+                <div>
+                    <label for="publisher" class="block text-sm font-medium text-gray-700">出版社</label>
+                    <input type="text" id="publisher" name="publisher" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+
+                <div>
+                    <label for="genre" class="block text-sm font-medium text-gray-700">ジャンル</label>
+                    <select id="genre" name="genre" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="">選択してください</option>
+                        <option value="小説">小説</option>
+                        <option value="漫画">漫画</option>
+                        <option value="雑誌">雑誌</option>
+                        <option value="実用書">実用書</option>
+                        <option value="参考書">参考書</option>
+                        <option value="その他">その他</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="status" class="block text-sm font-medium text-gray-700">読書状況</label>
+                    <select id="status" name="status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="未読">未読</option>
+                        <option value="読書中">読書中</option>
+                        <option value="読了">読了</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="memo" class="block text-sm font-medium text-gray-700">メモ</label>
+                    <textarea id="memo" name="memo" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+                </div>
+
+                <div id="submitError" class="hidden text-red-500 text-sm"></div>
+                <div id="successMessage" class="hidden text-green-500 text-sm"></div>
+
+                <div class="flex justify-end">
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                        本を登録
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- カメラモーダル -->
+    <div id="cameraModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center">
+        <div class="bg-white p-4 rounded-lg w-full max-w-lg">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">バーコードスキャン</h2>
+                <button id="closeCamera" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="relative">
+                <video id="camera" class="w-full rounded-lg"></video>
+                <div id="scanOverlay" class="absolute inset-0 border-2 border-blue-500 rounded-lg"></div>
+            </div>
+            <div class="mt-4 flex justify-between">
+                <button id="switchCamera" class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">
+                    カメラ切替
+                </button>
+                <button id="stopScan" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+                    スキャン停止
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class BookRegister {
+            constructor() {
+                this.form = document.getElementById('bookForm');
+                this.isbnInput = document.getElementById('isbn');
+                this.titleInput = document.getElementById('title');
+                this.authorInput = document.getElementById('author');
+                this.publisherInput = document.getElementById('publisher');
+                this.genreSelect = document.getElementById('genre');
+                this.statusSelect = document.getElementById('status');
+                this.memoInput = document.getElementById('memo');
+                this.submitError = document.getElementById('submitError');
+                this.successMessage = document.getElementById('successMessage');
+                this.scanButton = document.getElementById('scanButton');
+                this.cameraModal = document.getElementById('cameraModal');
+                this.camera = document.getElementById('camera');
+                this.closeCamera = document.getElementById('closeCamera');
+                this.switchCamera = document.getElementById('switchCamera');
+                this.stopScan = document.getElementById('stopScan');
+                this.codeReader = null;
+                this.currentStream = null;
+                this.currentFacingMode = 'environment';
+            }
+
+            async init() {
+                try {
+                    console.log('アプリケーションの初期化を開始...');
+                    await window.dbManager.init();
+                    console.log('データベースの初期化が完了しました。');
+                    this.setupEventListeners();
+                    console.log('イベントリスナーの設定が完了しました。');
+                } catch (error) {
+                    console.error('初期化エラー:', error);
+                    const errorMessage = error.message || 'システムの初期化に失敗しました。';
+                    const errorDetails = error.stack || '不明なエラー';
+                    console.error('エラーの詳細:', errorDetails);
+                    
+                    // エラーメッセージを表示
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'fixed top-0 left-0 right-0 bg-red-100 border-b border-red-400 text-red-700 px-4 py-3';
+                    errorDiv.innerHTML = `
+                        <div class="container mx-auto">
+                            <p class="font-bold">エラーが発生しました</p>
+                            <p class="text-sm">${errorMessage}</p>
+                            <p class="text-xs mt-2">詳細: ${errorDetails}</p>
+                            <button onclick="window.location.reload()" class="mt-2 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                                ページを再読み込み
+                            </button>
+                        </div>
+                    `;
+                    document.body.insertBefore(errorDiv, document.body.firstChild);
+                }
+            }
+
+            setupEventListeners() {
+                // フォームの送信イベント
+                this.form.addEventListener('submit', (event) => this.handleSubmit(event));
+
+                // ISBN入力のblurイベント
+                this.isbnInput.addEventListener('blur', () => this.handleIsbnBlur());
+
+                // スキャンボタンのクリックイベント
+                this.scanButton.addEventListener('click', () => this.startScan());
+
+                // カメラ関連のイベント
+                this.closeCamera.addEventListener('click', () => this.stopScanning());
+                this.switchCamera.addEventListener('click', () => this.switchCamera());
+                this.stopScan.addEventListener('click', () => this.stopScanning());
+            }
+
+            async handleIsbnBlur() {
+                const isbn = this.isbnInput.value.trim();
+                if (!isbn) return;
+
+                try {
+                    const bookData = await this.searchBook(isbn);
+                    if (bookData) {
+                        this.fillFormWithBookData(bookData);
+                    }
+                } catch (error) {
+                    console.error('ISBN検索エラー:', error);
+                }
+            }
+
+            async searchBook(isbn) {
+                // ISBNの形式を整える（ハイフンとスペースを削除）
+                isbn = isbn.replace(/[-\s]/g, '');
+
+                try {
+                    // OpenBD APIを使用して書籍情報を取得
+                    const response = await fetch(`https://api.openbd.jp/v1/get?isbn=${isbn}`);
+                    const data = await response.json();
+
+                    if (data && data[0] && data[0].summary) {
+                        const book = data[0].summary;
+                        return {
+                            isbn: book.isbn,
+                            title: book.title,
+                            author: book.author,
+                            publisher: book.publisher,
+                            genre: this.determineGenre(book.class)
+                        };
+                    }
+                } catch (error) {
+                    console.error('OpenBD APIエラー:', error);
+                }
+
+                return null;
+            }
+
+            determineGenre(classification) {
+                if (!classification) return '';
+
+                const classMap = {
+                    '01': '小説',
+                    '02': '漫画',
+                    '03': '雑誌',
+                    '04': '実用書',
+                    '05': '参考書'
+                };
+
+                const classCode = classification.substring(0, 2);
+                return classMap[classCode] || 'その他';
+            }
+
+            fillFormWithBookData(bookData) {
+                this.titleInput.value = bookData.title || '';
+                this.authorInput.value = bookData.author || '';
+                this.publisherInput.value = bookData.publisher || '';
+                this.genreSelect.value = bookData.genre || '';
+            }
+
+            async handleSubmit(event) {
+                event.preventDefault();
+                this.hideError('submit');
+                this.hideSuccess();
+
+                if (!this.validateForm()) {
+                    return;
+                }
+
+                const bookData = {
+                    isbn: this.isbnInput.value.trim(),
+                    title: this.titleInput.value.trim(),
+                    author: this.authorInput.value.trim(),
+                    publisher: this.publisherInput.value.trim(),
+                    genre: this.genreSelect.value,
+                    status: this.statusSelect.value,
+                    memo: this.memoInput.value.trim()
+                };
+
+                try {
+                    await window.dbManager.addBook(bookData);
+                    this.showSuccess('本が正常に登録されました。');
+                    this.form.reset();
+                } catch (error) {
+                    console.error('登録エラー:', error);
+                    this.showError('submit', '本の登録に失敗しました。');
+                }
+            }
+
+            validateForm() {
+                let isValid = true;
+
+                if (!this.titleInput.value.trim()) {
+                    this.showError('title', 'タイトルを入力してください。');
+                    isValid = false;
+                }
+
+                if (!this.authorInput.value.trim()) {
+                    this.showError('author', '著者を入力してください。');
+                    isValid = false;
+                }
+
+                return isValid;
+            }
+
+            showError(field, message) {
+                const errorElement = document.getElementById(`${field}Error`);
+                if (errorElement) {
+                    errorElement.textContent = message;
+                    errorElement.classList.remove('hidden');
+                }
+            }
+
+            hideError(field) {
+                const errorElement = document.getElementById(`${field}Error`);
+                if (errorElement) {
+                    errorElement.classList.add('hidden');
+                }
+            }
+
+            showSuccess(message) {
+                this.successMessage.textContent = message;
+                this.successMessage.classList.remove('hidden');
+                setTimeout(() => {
+                    this.successMessage.classList.add('hidden');
+                }, 3000);
+            }
+
+            hideSuccess() {
+                this.successMessage.classList.add('hidden');
+            }
+
+            async startScan() {
+                try {
+                    this.cameraModal.classList.remove('hidden');
+                    this.codeReader = new ZXing.BrowserMultiFormatReader();
+                    
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: this.currentFacingMode }
+                    });
+                    
+                    this.currentStream = stream;
+                    this.camera.srcObject = stream;
+                    await this.camera.play();
+
+                    this.codeReader.decodeFromVideoDevice(null, this.camera, (result, err) => {
+                        if (result) {
+                            const isbn = result.getText();
+                            if (this.validateIsbn(isbn)) {
+                                this.isbnInput.value = isbn;
+                                this.stopScanning();
+                                this.handleIsbnBlur();
+                            }
+                        }
+                    });
+                } catch (error) {
+                    console.error('スキャンエラー:', error);
+                    alert('カメラの起動に失敗しました。');
+                    this.stopScanning();
+                }
+            }
+
+            validateIsbn(isbn) {
+                // ISBNの形式を検証（10桁または13桁の数字）
+                return /^\d{10}$|^\d{13}$/.test(isbn.replace(/[-\s]/g, ''));
+            }
+
+            async switchCamera() {
+                try {
+                    this.currentFacingMode = this.currentFacingMode === 'environment' ? 'user' : 'environment';
+                    await this.stopScanning();
+                    await this.startScan();
+                } catch (error) {
+                    console.error('カメラ切替エラー:', error);
+                    alert('カメラの切替に失敗しました。');
+                }
+            }
+
+            async stopScanning() {
+                try {
+                    if (this.codeReader) {
+                        this.codeReader.reset();
+                    }
+                    if (this.currentStream) {
+                        this.currentStream.getTracks().forEach(track => track.stop());
+                    }
+                    this.camera.srcObject = null;
+                    this.cameraModal.classList.add('hidden');
+                } catch (error) {
+                    console.error('スキャン停止エラー:', error);
+                }
+            }
+        }
+
+        // アプリケーションの初期化
+        document.addEventListener('DOMContentLoaded', () => {
+            const app = new BookRegister();
+            app.init();
+        });
+    </script>
+</body>
+</html>
