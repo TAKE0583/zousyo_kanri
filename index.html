@@ -172,50 +172,13 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+    <script src="database.js"></script>
     <script>
-        class DatabaseManager {
-            constructor() {
-                this.db = null;
-                this.SQL = null;
-                this.init();
-            }
-
-            async init() {
+        // DatabaseManagerの重複定義・インスタンス生成を削除し、window.dbManagerを利用
+        window.dbManager.initPromise.then(() => {
+            document.getElementById('exportDb').addEventListener('click', () => {
                 try {
-                    this.SQL = await window.initSqlJs({
-                        locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
-                    });
-                    this.db = new this.SQL.Database();
-                    this.setupEventListeners();
-                } catch (error) {
-                    console.error('初期化エラー:', error);
-                    alert('データベースの初期化に失敗しました。');
-                }
-            }
-
-            setupEventListeners() {
-                document.getElementById('exportDb').addEventListener('click', () => {
-                    this.exportDatabase();
-                });
-
-                document.getElementById('importDb').addEventListener('click', () => {
-                    document.getElementById('importFile').click();
-                });
-
-                document.getElementById('importFile').addEventListener('change', (e) => {
-                    if (e.target.files.length > 0) {
-                        this.importDatabase(e.target.files[0]);
-                    }
-                });
-
-                document.getElementById('clearDb').addEventListener('click', () => {
-                    this.clearDatabase();
-                });
-            }
-
-            exportDatabase() {
-                try {
-                    const data = this.db.export();
+                    const data = window.dbManager.db.export();
                     const blob = new Blob([data], { type: 'application/x-sqlite3' });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
@@ -230,24 +193,27 @@
                     console.error('Export error:', error);
                     alert('データベースのエクスポートに失敗しました。');
                 }
-            }
-
-            async importDatabase(file) {
-                try {
-                    const buffer = await file.arrayBuffer();
-                    this.db = new this.SQL.Database(new Uint8Array(buffer));
-                    alert('データベースをインポートしました！');
-                } catch (error) {
-                    console.error('Import error:', error);
-                    alert('データベースのインポートに失敗しました。');
+            });
+            document.getElementById('importDb').addEventListener('click', () => {
+                document.getElementById('importFile').click();
+            });
+            document.getElementById('importFile').addEventListener('change', async (e) => {
+                if (e.target.files.length > 0) {
+                    try {
+                        const buffer = await e.target.files[0].arrayBuffer();
+                        window.dbManager.db = new window.dbManager.SQL.Database(new Uint8Array(buffer));
+                        alert('データベースをインポートしました！');
+                    } catch (error) {
+                        console.error('Import error:', error);
+                        alert('データベースのインポートに失敗しました。');
+                    }
                 }
-            }
-
-            clearDatabase() {
+            });
+            document.getElementById('clearDb').addEventListener('click', () => {
                 if (confirm('本当にデータベースをクリアしますか？この操作は取り消せません。')) {
                     try {
-                        this.db.run('DROP TABLE IF EXISTS books');
-                        this.db.run(`
+                        window.dbManager.db.run('DROP TABLE IF EXISTS books');
+                        window.dbManager.db.run(`
                             CREATE TABLE IF NOT EXISTS books (
                                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                                 isbn TEXT,
@@ -266,11 +232,8 @@
                         alert('データベースのクリアに失敗しました。');
                     }
                 }
-            }
-        }
-
-        // アプリケーション初期化
-        const dbManager = new DatabaseManager();
+            });
+        });
     </script>
 </body>
 </html> 
