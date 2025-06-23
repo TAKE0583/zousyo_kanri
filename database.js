@@ -204,7 +204,7 @@ class DatabaseManager {
             }
             const selectSQL = 'SELECT * FROM books ORDER BY added_date DESC';
             const results = this.db.exec(selectSQL);
-            
+            console.log('getAllBooks results:', results);
             if (results && results.length > 0) {
                 return results[0].values.map(row => ({
                     id: row[0],
