@@ -151,6 +151,11 @@ class DatabaseManager {
     async addBook(book) {
         try {
             await this.initPromise;
+            // booksテーブルがなければ自動作成
+            const tableCheck = this.db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='books'");
+            if (!tableCheck || tableCheck.length === 0 || tableCheck[0].values.length === 0) {
+                await this.createTables();
+            }
             const stmt = this.db.prepare(`
                 INSERT INTO books (isbn, title, author, publisher, genre, status, memo)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
