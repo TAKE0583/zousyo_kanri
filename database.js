@@ -171,6 +171,9 @@ class DatabaseManager {
                 book.memo
             ]);
             stmt.free();
+            // デバッグ: booksテーブルの内容を出力
+            const debugBooks = this.db.exec('SELECT * FROM books');
+            console.log('saveToIndexedDB直前のbooksテーブル内容:', debugBooks);
             await this.saveToIndexedDB();
             return true;
         } catch (error) {
