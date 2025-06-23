@@ -28,6 +28,7 @@ class DatabaseManager {
                 console.log('新しいデータベースを作成します。');
                 this.db = new this.SQL.Database();
                 await this.createTables();
+                await this.saveToIndexedDB();
             }
 
             this.isInitialized = true;
@@ -192,6 +193,11 @@ class DatabaseManager {
 
     async getAllBooks() {
         try {
+            // booksテーブルがなければ自動作成
+            const tableCheck = this.db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='books'");
+            if (!tableCheck || tableCheck.length === 0 || tableCheck[0].values.length === 0) {
+                await this.createTables();
+            }
             const selectSQL = 'SELECT * FROM books ORDER BY added_date DESC';
             const results = this.db.exec(selectSQL);
             
@@ -217,6 +223,11 @@ class DatabaseManager {
 
     async searchBooks(query) {
         try {
+            // booksテーブルがなければ自動作成
+            const tableCheck = this.db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='books'");
+            if (!tableCheck || tableCheck.length === 0 || tableCheck[0].values.length === 0) {
+                await this.createTables();
+            }
             const searchSQL = `
                 SELECT * FROM books 
                 WHERE title LIKE ? 
@@ -251,6 +262,11 @@ class DatabaseManager {
 
     async getTotalBooks() {
         try {
+            // booksテーブルがなければ自動作成
+            const tableCheck = this.db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='books'");
+            if (!tableCheck || tableCheck.length === 0 || tableCheck[0].values.length === 0) {
+                await this.createTables();
+            }
             const countSQL = 'SELECT COUNT(*) as count FROM books';
             const results = this.db.exec(countSQL);
             return results && results.length > 0 ? results[0].values[0][0] : 0;
