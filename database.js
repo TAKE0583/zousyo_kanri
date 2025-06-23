@@ -237,4 +237,28 @@ class DatabaseManager {
 }
 
 // グローバルなデータベースマネージャーインスタンスを作成
-window.dbManager = new DatabaseManager(); 
+window.dbManager = new DatabaseManager();
+
+// エラー表示用関数
+window.showError = function(message, details = '', guidance = '') {
+    const old = document.getElementById('customErrorBox');
+    if (old) old.remove();
+    const div = document.createElement('div');
+    div.id = 'customErrorBox';
+    div.style = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#fee2e2;color:#b91c1c;padding:16px;border-bottom:2px solid #f87171;';
+    div.innerHTML = `
+        <strong>エラー:</strong> ${message}<br>
+        ${guidance ? `<div style="margin-top:8px;">${guidance}</div>` : ''}
+        ${details ? `<button id="showDetailsBtn" style="margin-top:8px;">詳細を表示</button>
+        <pre id="errorDetails" style="display:none;background:#fff0f0;color:#b91c1c;padding:8px;border-radius:4px;">${details}</pre>` : ''}
+        <button id="closeErrorBtn" style="float:right;">閉じる</button>
+    `;
+    document.body.appendChild(div);
+    if (details) {
+        document.getElementById('showDetailsBtn').onclick = () => {
+            const pre = document.getElementById('errorDetails');
+            pre.style.display = pre.style.display === 'none' ? 'block' : 'none';
+        };
+    }
+    document.getElementById('closeErrorBtn').onclick = () => div.remove();
+}; 
