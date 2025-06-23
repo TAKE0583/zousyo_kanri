@@ -164,6 +164,7 @@
 
         <div class="db-controls">
             <h3>データベース管理</h3>
+            <div id="storageUsage" style="margin-bottom:10px;color:#555;font-size:0.95em;"></div>
             <button id="exportDb" class="btn">💾 データベースをエクスポート</button>
             <button id="importDb" class="btn">📂 データベースをインポート</button>
             <input type="file" id="importFile" accept=".db,.sqlite" style="display: none;">
@@ -233,6 +234,28 @@
                     }
                 }
             });
+        });
+
+        // IndexedDBストレージ使用量の表示
+        async function updateStorageUsage() {
+            if (navigator.storage && navigator.storage.estimate) {
+                const estimate = await navigator.storage.estimate();
+                const usage = estimate.usage || 0;
+                const quota = estimate.quota || 1;
+                const percent = Math.round((usage / quota) * 100);
+                const usageMB = (usage / (1024 * 1024)).toFixed(2);
+                const quotaMB = (quota / (1024 * 1024)).toFixed(2);
+                let msg = `ストレージ使用量: ${usageMB} MB / ${quotaMB} MB (${percent}%)`;
+                if (percent >= 80) {
+                    msg += '<br><span style="color:#b91c1c;font-weight:bold;">⚠️ 容量が残り少なくなっています。不要なデータを削除してください。</span>';
+                }
+                document.getElementById('storageUsage').innerHTML = msg;
+            }
+        }
+        updateStorageUsage();
+        // データベース操作後にも容量表示を更新
+        ["exportDb","importDb","clearDb"].forEach(id => {
+            document.getElementById(id).addEventListener('click', () => setTimeout(updateStorageUsage, 500));
         });
     </script>
 </body>

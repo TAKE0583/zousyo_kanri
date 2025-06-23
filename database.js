@@ -35,14 +35,34 @@ class DatabaseManager {
         } catch (error) {
             console.error('データベース初期化エラーの詳細:', error);
             if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-                throw new Error('ブラウザのストレージ容量が不足しています。古いデータを削除してください。');
+                window.showError(
+                    'ストレージ容量が不足しています。',
+                    error.stack,
+                    '不要なデータやキャッシュを削除してから再度お試しください。\n\n\
+ストレージ使用量は「データベース管理」欄で確認できます。\n\
+「データベースをクリア」ボタンで全データを削除できます。\n\
+容量の目安: ブラウザごとに異なりますが、通常50MB〜2GB程度です。'
+                );
             } else if (error instanceof DOMException && error.name === 'SecurityError') {
-                throw new Error('セキュリティの制限によりデータベースにアクセスできません。');
-            } else if (error.message.includes('Failed to fetch')) {
-                throw new Error('SQL.jsの読み込みに失敗しました。インターネット接続を確認してください。');
+                window.showError(
+                    'セキュリティの制限によりデータベースにアクセスできません。',
+                    error.stack,
+                    'ブラウザの設定やプライベートモードを確認してください。'
+                );
+            } else if (error.message && error.message.includes('Failed to fetch')) {
+                window.showError(
+                    'ネットワークエラーが発生しました。',
+                    error.stack,
+                    'インターネット接続を確認してください。'
+                );
             } else {
-                throw new Error(`データベースの初期化に失敗しました: ${error.message}`);
+                window.showError(
+                    'データベースの初期化に失敗しました。',
+                    error.stack,
+                    'ページを再読み込みしても解決しない場合は管理者にご連絡ください。'
+                );
             }
+            throw new Error(error.message);
         }
     }
 
