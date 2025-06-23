@@ -21,7 +21,7 @@ class DatabaseManager {
             console.log('IndexedDBからのデータベース読み込みを開始...');
             const dbData = await this.loadFromIndexedDB();
             
-            if (dbData) {
+            if (dbData && dbData.byteLength && dbData.byteLength > 0) {
                 console.log('既存のデータベースを読み込みました。');
                 this.db = new this.SQL.Database(dbData);
             } else {
