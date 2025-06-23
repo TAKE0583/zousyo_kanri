@@ -200,7 +200,8 @@
         .form-group textarea {
             width: 100%;
             padding: 12px;
-            border: 2px solid #e0e0e0;
+            border: 2.5px solid #b0b0b0;
+            box-shadow: 0 0 0 2px #f3f4f6;
             border-radius: 10px;
             font-size: 16px;
             background: rgba(255, 255, 255, 0.9);
@@ -211,8 +212,8 @@
         .form-group select:focus,
         .form-group textarea:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px #a5b4fc;
         }
 
         .form-group textarea {
@@ -321,7 +322,7 @@
                 <div class="flex items-center space-x-2">
                     <div class="flex-grow">
                         <label for="isbn" class="block text-sm font-medium text-gray-700">ISBN/JANコード</label>
-                        <input type="text" id="isbn" name="isbn" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <input type="number" id="isbn" name="isbn" inputmode="numeric" pattern="[0-9]*" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" autocomplete="off">
                         <div id="isbnError" class="hidden text-red-500 text-sm mt-1"></div>
                     </div>
                     <button type="button" id="scanButton" class="mt-6 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
@@ -681,6 +682,11 @@
         document.addEventListener('DOMContentLoaded', () => {
             const app = new BookRegister();
             app.init();
+        });
+
+        // ISBN/JAN欄で数字以外の入力を防ぐ
+        document.getElementById('isbn').addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^0-9]/g, '');
         });
     </script>
 </body>
