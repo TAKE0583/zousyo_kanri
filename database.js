@@ -157,6 +157,7 @@ class DatabaseManager {
             if (!tableCheck || tableCheck.length === 0 || tableCheck[0].values.length === 0) {
                 await this.createTables();
             }
+            console.log('addBookに渡されたbook:', book);
             const stmt = this.db.prepare(`
                 INSERT INTO books (isbn, title, author, publisher, genre, status, memo)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -171,13 +172,13 @@ class DatabaseManager {
                 book.memo
             ]);
             stmt.free();
-            // デバッグ: booksテーブルの内容を出力
             const debugBooks = this.db.exec('SELECT * FROM books');
             console.log('saveToIndexedDB直前のbooksテーブル内容:', debugBooks);
             await this.saveToIndexedDB();
             return true;
         } catch (error) {
             console.error('本の追加エラー:', error);
+            alert('本の追加エラー: ' + error.message);
             throw error;
         }
     }
