@@ -200,34 +200,31 @@
             });
             document.getElementById('importFile').addEventListener('change', async (e) => {
                 if (e.target.files.length > 0) {
+                    if (!confirm('現在のデータベースは上書きされます。よろしいですか？')) return;
                     try {
                         const buffer = await e.target.files[0].arrayBuffer();
+                        // データベースをメモリ上で置き換え
                         window.dbManager.db = new window.dbManager.SQL.Database(new Uint8Array(buffer));
-                        alert('データベースをインポートしました！');
+                        // ★★★ 変更をIndexedDBに保存する処理を追加 ★★★
+                        await window.dbManager.saveToIndexedDB();
+                        alert('データベースをインポートしました！ページを更新して反映させてください。');
+                        location.reload(); // 自動でリロードして反映
                     } catch (error) {
                         console.error('Import error:', error);
                         alert('データベースのインポートに失敗しました。');
                     }
                 }
             });
-            document.getElementById('clearDb').addEventListener('click', () => {
+            document.getElementById('clearDb').addEventListener('click', async () => {
                 if (confirm('本当にデータベースをクリアしますか？この操作は取り消せません。')) {
                     try {
+                        // メモリ上のデータベースをクリア
                         window.dbManager.db.run('DROP TABLE IF EXISTS books');
-                        window.dbManager.db.run(`
-                            CREATE TABLE IF NOT EXISTS books (
-                                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                isbn TEXT,
-                                title TEXT NOT NULL,
-                                author TEXT NOT NULL,
-                                publisher TEXT,
-                                genre TEXT,
-                                status TEXT DEFAULT '未読',
-                                memo TEXT,
-                                added_date TEXT DEFAULT CURRENT_TIMESTAMP
-                            )
-                        `);
+                        await window.dbManager.createTables(); // テーブルを再作成
+                        // ★★★ 変更をIndexedDBに保存する処理を追加 ★★★
+                        await window.dbManager.saveToIndexedDB();
                         alert('データベースをクリアしました。');
+                        location.reload(); // 自動でリロードして反映
                     } catch (error) {
                         console.error('Clear error:', error);
                         alert('データベースのクリアに失敗しました。');
